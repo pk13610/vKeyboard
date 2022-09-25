@@ -97,6 +97,10 @@ namespace MouseClickTool
             }
         }
 
+        private int periord_ = 0;
+        private bool is_stop_ = false;
+        private MouseClickTool.KeyboardHook hook_ = new KeyboardHook();
+
         public Form1()
         {
             InitializeComponent();
@@ -108,49 +112,73 @@ namespace MouseClickTool
                     Environment.Exit(0);
                     return;
                 }
-                if (int.TryParse(is_ms.Text, out int result) && result > 0)
-                {
-                    is_ms.ReadOnly = true;
-                    Task.Factory.StartNew(async () =>
-                    {
-                        await Task.Run(() =>
-                        {
-                            for (int i = 1; i < 5; i++)
-                            {
-                                is_begin.Text = string.Format("开始({0})", 5 - i);
-                                Thread.Sleep(1000);
-                            }
-                        });
-                        is_begin.Text = "停止";
-                        if (this.comboBox1.SelectedIndex == 0)
-                        {
-                            for (; ; )
-                            {
-                                await Task.Run(() =>
-                                {
-                                    MouseSimulator.ClickLeftMouseButton();
-                                    Thread.Sleep(result);
-                                });
-                            }
-                        }
-                        else
-                        {
-                            for (; ; )
-                            {
-                                await Task.Run(() =>
-                                {
-                                    MouseSimulator.ClickRightMouseButton();
-                                    Thread.Sleep(result);
-                                });
-                            }
-                        }
-                    });
-                }
-                else
+
+                periord_ = int.Parse(is_ms.Text);
+                if (periord_ < 100)
                 {
                     MessageBox.Show("输入的数字不正确，必须是正整数");
+                    return;
                 }
+                is_ms.ReadOnly = true;
+                Task.Factory.StartNew(async () =>
+                {
+                    await Task.Run(() =>
+                    {
+                        for (int i = 1; i < 5; i++)
+                        {
+                            is_begin.Text = string.Format("开始({0})", 5 - i);
+                            Thread.Sleep(1000);
+                        }
+                    });
+                    is_begin.Text = "停止";
+                    if (this.comboBox1.SelectedIndex == 0)
+                    {
+                        for (; !is_stop_; )
+                        {
+                            await Task.Run(() =>
+                            {
+                                MouseSimulator.ClickLeftMouseButton();
+                                Thread.Sleep(periord_);
+                            });
+                        }
+                    }
+                    else
+                    {
+                        for (; !is_stop_; )
+                        {
+                            await Task.Run(() =>
+                            {
+                                MouseSimulator.ClickRightMouseButton();
+                                Thread.Sleep(periord_);
+                            });
+                        }
+                    }
+                    is_begin.Text = "开始";
+                });
             };
+
+            MouseClickTool.KeyboardHook.KeyPressEvent += new EventHandler(KeyPressEvent);
+            hook_.Hook_Start();
+        }
+
+        private void KeyPressEvent(object sender, EventArgs e)
+        {
+            var keycode = (System.Windows.Forms.Keys) Convert.ToInt32(sender);
+            switch (keycode)
+            {
+                case System.Windows.Forms.Keys.F1:
+                    periord_ += 100;
+                    if (periord_ > 10000) periord_ = 1000;
+                    break;
+                case System.Windows.Forms.Keys.F2:
+                    periord_ -= 100;
+                    if (periord_ < 100) periord_ = 100;
+                    break;
+                case System.Windows.Forms.Keys.F4:
+                    is_stop_ = !is_stop_;
+                    break;
+            }
+            is_ms.Text = periord_.ToString();
         }
     }
 }
